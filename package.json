@@ -1,0 +1,38 @@
+{
+  "name": "openclaw-todoist",
+  "version": "0.1.0",
+  "description": "Native Todoist tools for OpenClaw agents.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "dependencies": {
+    "@doist/todoist-sdk": "^9.3.0",
+    "@sinclair/typebox": "^0.34.49"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@types/node": "^25.6.0",
+    "openclaw": "^2026.4.15",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2",
+      "minGatewayVersion": "2026.3.24-beta.2"
+    }
+  },
+  "license": "ISC"
+}
