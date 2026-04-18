@@ -1,0 +1,9 @@
+{
+  "id": "todoist",
+  "name": "Todoist",
+  "description": "Native Todoist integration for OpenClaw — task, project, and label management via the official Todoist API.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}
