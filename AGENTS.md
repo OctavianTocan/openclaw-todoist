@@ -2,13 +2,27 @@
 
 Rules for AI agents working on this codebase.
 
+## About this plugin
+
+openclaw-todoist is an OpenClaw plugin that gives agents native access to Todoist via 12 typed tools. It is the reference implementation for the "standard plugin" pattern alongside openclaw-notion. When building a new plugin, follow the same structure, guardrails, and conventions documented here.
+
+## SDK quirks (important — read before touching task state tools)
+
+The `@doist/todoist-sdk` v9 has behaviors that differ from the type signatures:
+
+- **`closeTask`/`reopenTask`/`deleteTask` return `undefined`**, not `boolean` — the Todoist API returns an empty object `{}`. Assert on state side-effects instead (re-read the task and check `completedAt` or `isDeleted`).
+- **`isCompleted` is always `undefined`** even after a task is closed. Use `completedAt !== null` to detect completed state.
+- **`deleteTask` does not throw** on a soft-deleted task — it returns the task object with `isDeleted: true`. Subsequent `getTask` calls succeed and return the marked task.
+
+If you add new tools that interact with task lifecycle state, write your assertions against the re-read state, not the SDK return value.
+
 ## Our Way — How We Do Stuff
 
 ### Live-API Testing (non-negotiable)
 
 Tests run against the real Todoist API. There are no mocks, no stubs, no mocked SDK responses. What we ship is what gets tested against the actual API.
 
-**Never modify or delete pre-existing workspace data.** This is the hard rule. The Todoist workspace contains real tasks and projects that belong to you. Tests must not touch them. The pattern is always:
+**Never modify or delete pre-existing workspace data.** This is the hard rule. The Todoist workspace contains real tasks and projects that belong to the user. Tests must not touch them. The pattern is always:
 
 1. **Create** whatever resources the test needs
 2. **Run assertions** against what you created
@@ -29,7 +43,20 @@ When building a new plugin that uses a third-party API:
 2. After tests are written and clean, Wretch adds the API key to the repo's GitHub secrets via `gh secret set`
 3. CI takes it from there on every subsequent push
 
-### Code style
+## Repo hygiene (mandatory for every plugin repo)
+
+Every plugin repo that ships to GitHub must have:
+
+| File | Notes |
+|------|-------|
+| `README.md` | About section, install instructions, tool table, SDK quirks section, CI note |
+| `LICENSE` | ISC by default; swap if a dependency requires something different |
+| `CHANGELOG.md` | Keep a Changelog format; add an entry for every significant change |
+| GitHub topics | At minimum: `openclaw-plugin`, `typescript`, and the service name |
+
+Add topics via `gh api -X PATCH repos/owner/repo -F topics=[...]`. CI runs on every PR to main. Nothing in this list is optional.
+
+## Code style
 
 - All exports need TSDoc docstrings.
 - Comments explain *why*, not *what*.
@@ -50,9 +77,9 @@ Live-API suite — every test hits the real Todoist API.
 - `getTask` → round-trips by id correctly
 - `updateTask` → patch applies, other fields preserved
 - `quickAddTask` → parses natural language, returns task
-- `closeTask` → marks complete, re-read confirms `isCompleted: true`
-- `reopenTask` → moves completed task back to active
-- `deleteTask` → removes task, subsequent `getTask` throws
+- `closeTask` → marks complete, re-read confirms `completedAt !== null`
+- `reopenTask` → moves completed task back to active, `completedAt === null`
+- `deleteTask` → removes task, subsequent `getTask` returns `isDeleted: true`
 - `getLabels` → returns array (empty is valid for label-free accounts)
 - Auth → bogus agentId throws (does not silently fall back)
 
