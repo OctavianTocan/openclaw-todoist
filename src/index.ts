@@ -37,8 +37,9 @@ function jsonResult(value: unknown) {
   };
 }
 
-function notImplemented(toolName: string): never {
-  throw new Error(`[openclaw-todoist] ${toolName} is not implemented yet (Phase 4).`);
+/** Strip undefined fields from a record. */
+function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
 export default definePluginEntry({
@@ -82,9 +83,23 @@ export default definePluginEntry({
           })
         ),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): call getClient(ctx.agentId).getTasks(...) with snake→camel mapping.
-        notImplemented("todoist_list_tasks");
+      async execute(id, params) {
+        const client = getClient(id);
+        // Use filter endpoint when a natural-language filter is provided.
+        if (params.filter) {
+          const result = await client.getTasksByFilter({ query: params.filter });
+          return jsonResult(result);
+        }
+        const result = await client.getTasks(
+          compact({
+            projectId: params.project_id,
+            sectionId: params.section_id,
+            parentId: params.parent_id,
+            label: params.label,
+            limit: params.limit,
+          })
+        );
+        return jsonResult(result);
       },
     }));
 
@@ -96,9 +111,8 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): return jsonResult(await getClient(ctx.agentId).getTask(params.id));
-        notImplemented("todoist_get_task");
+      async execute(id, params) {
+        return jsonResult(await getClient(id).getTask(params.id));
       },
     }));
 
@@ -136,9 +150,24 @@ export default definePluginEntry({
         ),
         assignee_id: Type.Optional(Type.String()),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): map snake_case → camelCase, call addTask, return jsonResult(response).
-        notImplemented("todoist_create_task");
+      async execute(id, params) {
+        const task = await getClient(id).addTask(
+          compact({
+            content: params.content,
+            description: params.description,
+            projectId: params.project_id,
+            sectionId: params.section_id,
+            parentId: params.parent_id,
+            labels: params.labels,
+            priority: params.priority,
+            dueString: params.due_string,
+            dueDate: params.due_date,
+            dueDatetime: params.due_datetime,
+            dueLang: params.due_lang,
+            assigneeId: params.assignee_id,
+          }) as Parameters<TodoistApi["addTask"]>[0]
+        );
+        return jsonResult(task);
       },
     }));
 
@@ -154,9 +183,9 @@ export default definePluginEntry({
             "Full natural-language task string, e.g. 'Pay rent tomorrow 9am #Finance @recurring p1'.",
         }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): return jsonResult(await client.quickAdd({ text: params.text }));
-        notImplemented("todoist_quick_add");
+      async execute(id, params) {
+        const task = await getClient(id).quickAddTask({ text: params.text });
+        return jsonResult(task);
       },
     }));
 
@@ -177,9 +206,22 @@ export default definePluginEntry({
         due_lang: Type.Optional(Type.String()),
         assignee_id: Type.Optional(Type.String()),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): build a camelCase patch with only provided fields, call updateTask.
-        notImplemented("todoist_update_task");
+      async execute(id, params) {
+        const task = await getClient(id).updateTask(
+          params.id,
+          compact({
+            content: params.content,
+            description: params.description,
+            labels: params.labels,
+            priority: params.priority,
+            dueString: params.due_string,
+            dueDate: params.due_date,
+            dueDatetime: params.due_datetime,
+            dueLang: params.due_lang,
+            assigneeId: params.assignee_id,
+          }) as Parameters<TodoistApi["addTask"]>[0]
+        );
+        return jsonResult(task);
       },
     }));
 
@@ -191,9 +233,9 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): await client.closeTask(params.id); return jsonResult({ id, closed: true });
-        notImplemented("todoist_complete_task");
+      async execute(id, params) {
+        const ok = await getClient(id).closeTask(params.id);
+        return jsonResult({ id: params.id, closed: ok });
       },
     }));
 
@@ -205,9 +247,9 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): await client.reopenTask(params.id); return jsonResult({ id, reopened: true });
-        notImplemented("todoist_reopen_task");
+      async execute(id, params) {
+        const ok = await getClient(id).reopenTask(params.id);
+        return jsonResult({ id: params.id, reopened: ok });
       },
     }));
 
@@ -221,9 +263,9 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The task id to delete." }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): await client.deleteTask(params.id); return jsonResult({ id, deleted: true });
-        notImplemented("todoist_delete_task");
+      async execute(id, params) {
+        const ok = await getClient(id).deleteTask(params.id);
+        return jsonResult({ id: params.id, deleted: ok });
       },
     }));
 
@@ -233,9 +275,8 @@ export default definePluginEntry({
       label: "Todoist List Projects",
       description: "List every project in the workspace (Inbox + user projects).",
       parameters: Type.Object({}),
-      async execute(_id, _params) {
-        // TODO(Phase 4): return jsonResult(await client.getProjects());
-        notImplemented("todoist_list_projects");
+      async execute(id, _params) {
+        return jsonResult(await getClient(id).getProjects());
       },
     }));
 
@@ -257,9 +298,17 @@ export default definePluginEntry({
           })
         ),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): map snake_case → camelCase and call addProject.
-        notImplemented("todoist_create_project");
+      async execute(id, params) {
+        const project = await getClient(id).addProject(
+          compact({
+            name: params.name,
+            parentId: params.parent_id,
+            color: params.color as never,
+            isFavorite: params.is_favorite,
+            viewStyle: params.view_style as never,
+          }) as Parameters<TodoistApi["addProject"]>[0]
+        );
+        return jsonResult(project);
       },
     }));
 
@@ -273,9 +322,9 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The project id to delete." }),
       }),
-      async execute(_id, _params) {
-        // TODO(Phase 4): await client.deleteProject(params.id); return jsonResult({ id, deleted: true });
-        notImplemented("todoist_delete_project");
+      async execute(id, params) {
+        const ok = await getClient(id).deleteProject(params.id);
+        return jsonResult({ id: params.id, deleted: ok });
       },
     }));
 
@@ -285,9 +334,8 @@ export default definePluginEntry({
       label: "Todoist List Labels",
       description: "List personal labels in the workspace.",
       parameters: Type.Object({}),
-      async execute(_id, _params) {
-        // TODO(Phase 4): return jsonResult(await client.getLabels());
-        notImplemented("todoist_list_labels");
+      async execute(id, _params) {
+        return jsonResult(await getClient(id).getLabels());
       },
     }));
   },

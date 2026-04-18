@@ -1,53 +1,54 @@
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-
-const CONFIG_DIR = path.join(os.homedir(), ".config", "todoist");
-const DEFAULT_KEY_PATH = path.join(CONFIG_DIR, "api_key");
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 /**
- * Resolve the Todoist API token for a given agent.
+ * Resolves the Todoist API token for a given agent.
  *
  * Resolution order:
- *   1. If `agentId` is provided, read `~/.config/todoist/api_key_<agentId>`.
- *      The agent-scoped path is strict: if the file is missing or unreadable,
- *      this function throws. It never silently falls back to the default
- *      token, because isolation between agents must not collapse by accident.
- *   2. Otherwise (no `agentId`), read `process.env.TODOIST_API_TOKEN`. The
- *      OpenClaw gateway loads `~/.openclaw/.env` into its process env.
- *   3. If the env var is missing, fall back to `~/.config/todoist/api_key`.
- *   4. If none of the above resolve, throw an error naming every path tried.
+ * 1. If agentId provided: check ~/.config/todoist/api_key_<agentId> — if readable, trim + return
+ * 2. Read TODOIST_API_TOKEN from process.env (OpenClaw loads ~/.openclaw/.env into the gateway process)
+ * 3. Fallback: check ~/.config/todoist/api_key if env missing (matches notion default-key pattern)
+ * 4. Throw a precise error naming every path tried
  *
- * @param agentId Optional OpenClaw agent identifier for per-agent tokens.
- * @returns The trimmed Todoist API token.
- * @throws When no token can be resolved for the requested scope.
+ * Do NOT silently fall back from agent-specific path to default if agentId was explicitly passed.
  */
 export function getTodoistToken(agentId?: string): string {
+  // Step 1: agent-specific token file
   if (agentId) {
-    const agentKeyPath = path.join(CONFIG_DIR, `api_key_${agentId}`);
+    const agentKeyPath = join(homedir(), ".config", "todoist", `api_key_${agentId}`);
     try {
-      return fs.readFileSync(agentKeyPath, "utf8").trim();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Failed to read Todoist API token for agent "${agentId}" from ${agentKeyPath}: ${message}. ` +
-          "Agent-scoped tokens do not fall back to the default token."
-      );
+      const token = readFileSync(agentKeyPath, "utf8").trim();
+      if (token) return token;
+    } catch {
+      // File not readable — continue to next step
     }
   }
 
-  const envToken = process.env.TODOIST_API_TOKEN?.trim();
-  if (envToken) {
-    return envToken;
+  // Step 2: environment variable (OpenClaw loads ~/.openclaw/.env into process.env)
+  const envToken = process.env.TODOIST_API_TOKEN;
+  if (envToken) return envToken;
+
+  // Step 3: fallback default key file
+  const defaultKeyPath = join(homedir(), ".config", "todoist", "api_key");
+  try {
+    const token = readFileSync(defaultKeyPath, "utf8").trim();
+    if (token) return token;
+  } catch {
+    // File not readable — continue to error
   }
 
-  try {
-    return fs.readFileSync(DEFAULT_KEY_PATH, "utf8").trim();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Failed to resolve Todoist API token. Tried: process.env.TODOIST_API_TOKEN, ${DEFAULT_KEY_PATH}. ` +
-        `Last error: ${message}`
-    );
+  // Step 4: nothing worked — throw with full accounting
+  const tried: string[] = [];
+  if (agentId) {
+    const agentKeyPath = join(homedir(), ".config", "todoist", `api_key_${agentId}`);
+    tried.push(`  - ${agentKeyPath}: not readable or empty`);
   }
+  tried.push(`  - process.env.TODOIST_API_TOKEN: not set or empty`);
+  tried.push(`  - ${join(homedir(), ".config", "todoist", "api_key")}: not readable or empty`);
+
+  throw new Error(
+    `Could not resolve Todoist token for agent${agentId ? ` "${agentId}"` : ""}.\n` +
+      `Tried:\n${tried.join("\n")}`
+  );
 }
