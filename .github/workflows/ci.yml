@@ -8,9 +8,13 @@ on:
 
 jobs:
   build:
-    name: Lint · Build · Test
+    name: Lint · Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    # Do NOT read secrets on PRs from forks. Skipping test step entirely —
+    # no API key should ever reach an untrusted CI run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
 
     steps:
       - name: Checkout
