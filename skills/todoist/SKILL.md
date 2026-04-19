@@ -73,3 +73,4 @@ The `@doist/todoist-sdk` v9 has behaviors that differ from the type signatures:
 - Prefer `todoist_quick_add` for conversational task creation (faster, more natural).
 - Destructive tools (`todoist_delete_task`) require an explicit UUID. No filter-based bulk delete.
 - Always prefer direct tool calls over script-based workarounds.
+- **Bulk operations:** All tools are single-task. For multi-task migration/editing, chain calls or write a script (see GitHub issue #1 for planned batch tooling).
