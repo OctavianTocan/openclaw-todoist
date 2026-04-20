@@ -90,3 +90,4 @@ Live-API suite — every test hits the real Todoist API.
 - Destructive tools (`delete_task`, `delete_project`) require an explicit `id` param. Never add a filter-based bulk delete path.
 - Wrap every SDK response with `jsonResult()` before returning.
 - Use `compact()` to strip `undefined` fields from param objects before passing to the SDK.
+- **AI Rules (`.claude/rules/`)**: Always read and follow the rules in `.claude/rules/` when modifying code. Covers SDK return value handling, type cast accuracy, batch result typing, and test cleanup tracking.
