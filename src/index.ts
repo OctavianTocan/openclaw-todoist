@@ -269,6 +269,181 @@ export default definePluginEntry({
       },
     }));
 
+    // --- todoist_create_tasks (batch) ---
+    api.registerTool((_ctx) => ({
+      name: "todoist_create_tasks",
+      label: "Todoist Create Tasks (Batch)",
+      description:
+        "Create multiple tasks in one call. Each item accepts the same fields as todoist_create_task. Returns per-item results.",
+      parameters: Type.Object({
+        tasks: Type.Array(
+          Type.Object({
+            content: Type.String({ description: "Task title / content." }),
+            description: Type.Optional(Type.String()),
+            project_id: Type.Optional(Type.String()),
+            section_id: Type.Optional(Type.String()),
+            parent_id: Type.Optional(Type.String()),
+            labels: Type.Optional(Type.Array(Type.String())),
+            priority: Type.Optional(Type.Integer({ minimum: 1, maximum: 4 })),
+            due_string: Type.Optional(Type.String()),
+            due_date: Type.Optional(Type.String()),
+            due_datetime: Type.Optional(Type.String()),
+            due_lang: Type.Optional(Type.String()),
+            assignee_id: Type.Optional(Type.String()),
+          }),
+          { description: "Array of task inputs to create." }
+        ),
+      }),
+      async execute(id, params) {
+        const client = getClient(id);
+        const results = [];
+        // Sequential to respect Todoist rate limits.
+        for (const item of params.tasks) {
+          try {
+            const task = await client.addTask(
+              compact({
+                content: item.content,
+                description: item.description,
+                projectId: item.project_id,
+                sectionId: item.section_id,
+                parentId: item.parent_id,
+                labels: item.labels,
+                priority: item.priority,
+                dueString: item.due_string,
+                dueDate: item.due_date,
+                dueDatetime: item.due_datetime,
+                dueLang: item.due_lang,
+                assigneeId: item.assignee_id,
+              }) as Parameters<TodoistApi["addTask"]>[0]
+            );
+            results.push({ id: task.id, status: "ok", content: task.content });
+          } catch (err: unknown) {
+            results.push({
+              status: "error",
+              content: item.content,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        return jsonResult(results);
+      },
+    }));
+
+    // --- todoist_complete_tasks (batch) ---
+    api.registerTool((_ctx) => ({
+      name: "todoist_complete_tasks",
+      label: "Todoist Complete Tasks (Batch)",
+      description: "Mark multiple tasks as complete by their IDs. Returns per-item results.",
+      parameters: Type.Object({
+        ids: Type.Array(Type.String(), {
+          description: "Array of task IDs to complete.",
+        }),
+      }),
+      async execute(id, params) {
+        const client = getClient(id);
+        const results = [];
+        for (const taskId of params.ids) {
+          try {
+            await client.closeTask(taskId);
+            results.push({ id: taskId, status: "ok", action: "completed" });
+          } catch (err: unknown) {
+            results.push({
+              id: taskId,
+              status: "error",
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        return jsonResult(results);
+      },
+    }));
+
+    // --- todoist_update_tasks (batch) ---
+    api.registerTool((_ctx) => ({
+      name: "todoist_update_tasks",
+      label: "Todoist Update Tasks (Batch)",
+      description:
+        "Patch multiple tasks in one call. Each item needs an id plus the fields to update. Returns per-item results.",
+      parameters: Type.Object({
+        tasks: Type.Array(
+          Type.Object({
+            id: Type.String({ description: "The task id." }),
+            content: Type.Optional(Type.String()),
+            description: Type.Optional(Type.String()),
+            labels: Type.Optional(Type.Array(Type.String())),
+            priority: Type.Optional(Type.Integer({ minimum: 1, maximum: 4 })),
+            due_string: Type.Optional(Type.String()),
+            due_date: Type.Optional(Type.String()),
+            due_datetime: Type.Optional(Type.String()),
+            due_lang: Type.Optional(Type.String()),
+            assignee_id: Type.Optional(Type.String()),
+          }),
+          { description: "Array of task update objects." }
+        ),
+      }),
+      async execute(id, params) {
+        const client = getClient(id);
+        const results = [];
+        for (const item of params.tasks) {
+          try {
+            const task = await client.updateTask(
+              item.id,
+              compact({
+                content: item.content,
+                description: item.description,
+                labels: item.labels,
+                priority: item.priority,
+                dueString: item.due_string,
+                dueDate: item.due_date,
+                dueDatetime: item.due_datetime,
+                dueLang: item.due_lang,
+                assigneeId: item.assignee_id,
+              }) as Parameters<TodoistApi["addTask"]>[0]
+            );
+            results.push({ id: task.id, status: "ok", content: task.content });
+          } catch (err: unknown) {
+            results.push({
+              id: item.id,
+              status: "error",
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        return jsonResult(results);
+      },
+    }));
+
+    // --- todoist_delete_tasks (batch) ---
+    // Destructive: explicit IDs only. Never add a filter-based bulk delete path.
+    api.registerTool((_ctx) => ({
+      name: "todoist_delete_tasks",
+      label: "Todoist Delete Tasks (Batch)",
+      description:
+        "Permanently delete multiple tasks by their IDs. Destructive — requires explicit IDs; filter-based bulk deletes are not supported.",
+      parameters: Type.Object({
+        ids: Type.Array(Type.String(), {
+          description: "Array of task IDs to delete.",
+        }),
+      }),
+      async execute(id, params) {
+        const client = getClient(id);
+        const results = [];
+        for (const taskId of params.ids) {
+          try {
+            await client.deleteTask(taskId);
+            results.push({ id: taskId, status: "ok", action: "deleted" });
+          } catch (err: unknown) {
+            results.push({
+              id: taskId,
+              status: "error",
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        return jsonResult(results);
+      },
+    }));
+
     // --- todoist_list_projects ---
     api.registerTool((_ctx) => ({
       name: "todoist_list_projects",

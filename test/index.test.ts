@@ -184,6 +184,82 @@ describe("todoist_list_labels", () => {
 
 // --- Auth ---
 
+// --- Batch operations ---
+
+describe("todoist_create_tasks (batch)", () => {
+  it("creates multiple tasks and returns per-item results", async () => {
+    const items = [
+      { content: "batch-create-1" },
+      { content: "batch-create-2", priority: 3 },
+      { content: "batch-create-3", description: "batch desc" },
+    ];
+    const results = [];
+    for (const item of items) {
+      const task = await client.addTask(item);
+      track(task.id, "task");
+      results.push(task);
+    }
+    expect(results).toHaveLength(3);
+    for (const task of results) {
+      expect(task.id).toBeDefined();
+    }
+    expect(results[1].priority).toBe(3);
+    expect(results[2].description).toBe("batch desc");
+  });
+});
+
+describe("todoist_complete_tasks (batch)", () => {
+  it("completes multiple tasks", async () => {
+    const t1 = await client.addTask({ content: "batch-complete-1" });
+    const t2 = await client.addTask({ content: "batch-complete-2" });
+    track(t1.id, "task");
+    track(t2.id, "task");
+
+    await client.closeTask(t1.id);
+    await client.closeTask(t2.id);
+
+    const r1 = await client.getTask(t1.id);
+    const r2 = await client.getTask(t2.id);
+    expect(r1.completedAt).not.toBeNull();
+    expect(r2.completedAt).not.toBeNull();
+  });
+});
+
+describe("todoist_update_tasks (batch)", () => {
+  it("patches multiple tasks", async () => {
+    const t1 = await client.addTask({ content: "batch-update-1" });
+    const t2 = await client.addTask({ content: "batch-update-2" });
+    track(t1.id, "task");
+    track(t2.id, "task");
+
+    await client.updateTask(t1.id, { priority: 4 });
+    await client.updateTask(t2.id, { content: "batch-update-2-renamed" });
+
+    const r1 = await client.getTask(t1.id);
+    const r2 = await client.getTask(t2.id);
+    expect(r1.priority).toBe(4);
+    expect(r2.content).toBe("batch-update-2-renamed");
+  });
+});
+
+describe("todoist_delete_tasks (batch)", () => {
+  it("deletes multiple tasks", async () => {
+    const t1 = await client.addTask({ content: "batch-delete-1" });
+    const t2 = await client.addTask({ content: "batch-delete-2" });
+    // Not tracked — we're deleting them here.
+
+    await client.deleteTask(t1.id);
+    await client.deleteTask(t2.id);
+
+    const r1 = await client.getTask(t1.id);
+    const r2 = await client.getTask(t2.id);
+    expect(r1.isDeleted).toBe(true);
+    expect(r2.isDeleted).toBe(true);
+  });
+});
+
+// --- Auth ---
+
 describe("auth", () => {
   it("getTodoistToken() with bogus agentId still resolves via env fallback", () => {
     // When no agent-specific override file exists and env is present,
