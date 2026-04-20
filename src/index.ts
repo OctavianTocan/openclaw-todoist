@@ -37,6 +37,15 @@ function jsonResult(value: unknown) {
   };
 }
 
+/** Per-item result shape returned by batch tools. */
+interface BatchResult {
+  id?: string;
+  status: "ok" | "error";
+  content?: string;
+  action?: string;
+  error?: string;
+}
+
 /** Strip undefined fields from a record. */
 function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
@@ -219,7 +228,7 @@ export default definePluginEntry({
             dueDatetime: params.due_datetime,
             dueLang: params.due_lang,
             assigneeId: params.assignee_id,
-          }) as Parameters<TodoistApi["addTask"]>[0]
+          }) as Parameters<TodoistApi["updateTask"]>[1]
         );
         return jsonResult(task);
       },
@@ -296,7 +305,7 @@ export default definePluginEntry({
       }),
       async execute(id, params) {
         const client = getClient(id);
-        const results = [];
+        const results: BatchResult[] = [];
         // Sequential to respect Todoist rate limits.
         for (const item of params.tasks) {
           try {
@@ -341,7 +350,7 @@ export default definePluginEntry({
       }),
       async execute(id, params) {
         const client = getClient(id);
-        const results = [];
+        const results: BatchResult[] = [];
         for (const taskId of params.ids) {
           try {
             await client.closeTask(taskId);
@@ -383,7 +392,7 @@ export default definePluginEntry({
       }),
       async execute(id, params) {
         const client = getClient(id);
-        const results = [];
+        const results: BatchResult[] = [];
         for (const item of params.tasks) {
           try {
             const task = await client.updateTask(
@@ -398,7 +407,7 @@ export default definePluginEntry({
                 dueDatetime: item.due_datetime,
                 dueLang: item.due_lang,
                 assigneeId: item.assignee_id,
-              }) as Parameters<TodoistApi["addTask"]>[0]
+              }) as Parameters<TodoistApi["updateTask"]>[1]
             );
             results.push({ id: task.id, status: "ok", content: task.content });
           } catch (err: unknown) {
@@ -419,7 +428,7 @@ export default definePluginEntry({
       name: "todoist_delete_tasks",
       label: "Todoist Delete Tasks (Batch)",
       description:
-        "Permanently delete multiple tasks by their IDs. Destructive — requires explicit IDs; filter-based bulk deletes are not supported.",
+        "Delete multiple tasks by their IDs. Todoist treats this as a soft-delete (tasks are marked isDeleted, not hard-removed). Requires explicit IDs; filter-based bulk deletes are not supported.",
       parameters: Type.Object({
         ids: Type.Array(Type.String(), {
           description: "Array of task IDs to delete.",
@@ -427,7 +436,7 @@ export default definePluginEntry({
       }),
       async execute(id, params) {
         const client = getClient(id);
-        const results = [];
+        const results: BatchResult[] = [];
         for (const taskId of params.ids) {
           try {
             await client.deleteTask(taskId);

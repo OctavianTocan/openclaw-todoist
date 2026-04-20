@@ -246,7 +246,9 @@ describe("todoist_delete_tasks (batch)", () => {
   it("deletes multiple tasks", async () => {
     const t1 = await client.addTask({ content: "batch-delete-1" });
     const t2 = await client.addTask({ content: "batch-delete-2" });
-    // Not tracked — we're deleting them here.
+    // Track for cleanup in case the test aborts before the delete calls succeed.
+    track(t1.id, "task");
+    track(t2.id, "task");
 
     await client.deleteTask(t1.id);
     await client.deleteTask(t2.id);
