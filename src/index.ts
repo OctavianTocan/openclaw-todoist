@@ -234,8 +234,8 @@ export default definePluginEntry({
         id: Type.String({ description: "The task id." }),
       }),
       async execute(id, params) {
-        const ok = await getClient(id).closeTask(params.id);
-        return jsonResult({ id: params.id, closed: ok });
+        await getClient(id).closeTask(params.id);
+        return jsonResult({ id: params.id, action: "completed" });
       },
     }));
 
@@ -248,8 +248,8 @@ export default definePluginEntry({
         id: Type.String({ description: "The task id." }),
       }),
       async execute(id, params) {
-        const ok = await getClient(id).reopenTask(params.id);
-        return jsonResult({ id: params.id, reopened: ok });
+        await getClient(id).reopenTask(params.id);
+        return jsonResult({ id: params.id, action: "reopened" });
       },
     }));
 
@@ -264,8 +264,8 @@ export default definePluginEntry({
         id: Type.String({ description: "The task id to delete." }),
       }),
       async execute(id, params) {
-        const ok = await getClient(id).deleteTask(params.id);
-        return jsonResult({ id: params.id, deleted: ok });
+        await getClient(id).deleteTask(params.id);
+        return jsonResult({ id: params.id, action: "deleted" });
       },
     }));
 
@@ -323,8 +323,8 @@ export default definePluginEntry({
         id: Type.String({ description: "The project id to delete." }),
       }),
       async execute(id, params) {
-        const ok = await getClient(id).deleteProject(params.id);
-        return jsonResult({ id: params.id, deleted: ok });
+        await getClient(id).deleteProject(params.id);
+        return jsonResult({ id: params.id, action: "deleted" });
       },
     }));
 
