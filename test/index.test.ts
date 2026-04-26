@@ -1,5 +1,8 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { TodoistApi } from "@doist/todoist-sdk";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { getTodoistToken } from "../src/auth.js";
 
 /**
@@ -185,32 +188,54 @@ describe("todoist_list_labels", () => {
 // --- Auth ---
 
 describe("auth", () => {
-  it("getTodoistToken() with bogus agentId still resolves via env fallback", () => {
-    // When no agent-specific override file exists and env is present,
-    // getTodoistToken falls through to the env var. This is correct behavior
-    // only when no file was readable for the requested agentId.
-    // This test validates that the env path is reachable.
-    const token = getTodoistToken();
-    expect(token).toBeTruthy();
-    expect(token.length).toBeGreaterThan(10);
+  const originalToken = process.env.TODOIST_API_TOKEN;
+  const originalConfigDir = process.env.TODOIST_CONFIG_DIR;
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.TODOIST_API_TOKEN;
+    } else {
+      process.env.TODOIST_API_TOKEN = originalToken;
+    }
+    if (originalConfigDir === undefined) {
+      delete process.env.TODOIST_CONFIG_DIR;
+    } else {
+      process.env.TODOIST_CONFIG_DIR = originalConfigDir;
+    }
   });
 
-  it("getTodoistToken() rejects when no paths are available", async () => {
-    // Save original env
-    const original = process.env.TODOIST_API_TOKEN;
+  it("default and main contexts may resolve via env fallback", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "todoist-auth-"));
+    process.env.TODOIST_CONFIG_DIR = tempDir;
+    process.env.TODOIST_API_TOKEN = "todoist_env_test_token";
+
+    expect(getTodoistToken()).toBe("todoist_env_test_token");
+    expect(getTodoistToken("default")).toBe("todoist_env_test_token");
+    expect(getTodoistToken("main")).toBe("todoist_env_test_token");
+  });
+
+  it("non-main explicit agents do not fall back to the env token", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "todoist-auth-"));
+    process.env.TODOIST_CONFIG_DIR = tempDir;
+    process.env.TODOIST_API_TOKEN = "todoist_env_test_token";
+
+    expect(() => getTodoistToken("secondary_agent")).toThrow("Explicit non-main agents");
+  });
+
+  it("non-main explicit agents use their own key file when present", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "todoist-auth-"));
+    process.env.TODOIST_CONFIG_DIR = tempDir;
+    process.env.TODOIST_API_TOKEN = "todoist_env_test_token";
+    writeFileSync(join(tempDir, "api_key_secondary_agent"), "todoist_secondary_test_token");
+
+    expect(getTodoistToken("secondary_agent")).toBe("todoist_secondary_test_token");
+  });
+
+  it("throws with useful details when no main/default paths are available", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "todoist-auth-"));
+    process.env.TODOIST_CONFIG_DIR = tempDir;
     delete process.env.TODOIST_API_TOKEN;
 
-    // Mock fs to return nothing for every path
-    const { readFileSync } = await import("node:fs");
-    const _originalReadFile = readFileSync;
-
-    // This is a structural test: the function throws when ALL paths fail.
-    // We can't easily stub fs in ESM without a test container,
-    // so we verify via the error shape that all paths are named in the message.
-    try {
-      expect(() => getTodoistToken("this-agent-does-not-exist-12345")).toThrow();
-    } finally {
-      process.env.TODOIST_API_TOKEN = original;
-    }
+    expect(() => getTodoistToken("main")).toThrow("process.env.TODOIST_API_TOKEN");
   });
 });

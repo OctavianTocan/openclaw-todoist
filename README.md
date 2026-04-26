@@ -29,11 +29,11 @@ The plugin reads the Todoist token in this order — first hit wins:
 
 | Priority | Source | When to use |
 |----------|--------|-------------|
-| 1 | `~/.config/todoist/api_key_<agentId>` | Agent-scoped token (e.g. Esther's agent has its own key) |
-| 2 | `TODOIST_API_TOKEN` env var | Default. OpenClaw loads `~/.openclaw/.env` into the gateway |
-| 3 | `~/.config/todoist/api_key` | Fallback default token |
+| 1 | `~/.config/todoist/api_key_<agentId>` | Agent-scoped token for explicit non-default agents |
+| 2 | `TODOIST_API_TOKEN` env var | Default/main agent only. OpenClaw loads `~/.openclaw/.env` into the gateway |
+| 3 | `~/.config/todoist/api_key` | Fallback default/main token |
 
-If an agent-scoped file is requested but missing, the tool call fails. It will **not** silently fall back to the default token.
+If an explicit non-default agent is missing its agent-scoped file, the tool call fails. It will **not** silently fall back to the default/main token.
 
 ## Tools
 

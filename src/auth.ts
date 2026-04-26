@@ -7,16 +7,19 @@ import { join } from "node:path";
  *
  * Resolution order:
  * 1. If agentId provided: check ~/.config/todoist/api_key_<agentId> — if readable, trim + return
- * 2. Read TODOIST_API_TOKEN from process.env (OpenClaw loads ~/.openclaw/.env into the gateway process)
- * 3. Fallback: check ~/.config/todoist/api_key if env missing (matches notion default-key pattern)
+ * 2. For default/main only: read TODOIST_API_TOKEN from process.env
+ * 3. For default/main only: check ~/.config/todoist/api_key if env missing
  * 4. Throw a precise error naming every path tried
  *
- * Do NOT silently fall back from agent-specific path to default if agentId was explicitly passed.
+ * Do NOT silently fall back from non-main agent-specific paths to the main/default token.
  */
 export function getTodoistToken(agentId?: string): string {
+  const configDir = process.env.TODOIST_CONFIG_DIR ?? join(homedir(), ".config", "todoist");
+  const normalizedAgentId = agentId === "default" ? undefined : agentId;
+
   // Step 1: agent-specific token file
-  if (agentId) {
-    const agentKeyPath = join(homedir(), ".config", "todoist", `api_key_${agentId}`);
+  if (normalizedAgentId) {
+    const agentKeyPath = join(configDir, `api_key_${normalizedAgentId}`);
     try {
       const token = readFileSync(agentKeyPath, "utf8").trim();
       if (token) return token;
@@ -25,12 +28,22 @@ export function getTodoistToken(agentId?: string): string {
     }
   }
 
+  const isMainContext = normalizedAgentId === undefined || normalizedAgentId === "main";
+  if (!isMainContext) {
+    throw new Error(
+      `Could not resolve Todoist token for agent "${normalizedAgentId}".\n` +
+        `Tried:\n` +
+        `  - ${join(configDir, `api_key_${normalizedAgentId}`)}: not readable or empty\n` +
+        `Explicit non-main agents do not fall back to TODOIST_API_TOKEN or ${join(configDir, "api_key")}.`
+    );
+  }
+
   // Step 2: environment variable (OpenClaw loads ~/.openclaw/.env into process.env)
   const envToken = process.env.TODOIST_API_TOKEN;
   if (envToken) return envToken;
 
   // Step 3: fallback default key file
-  const defaultKeyPath = join(homedir(), ".config", "todoist", "api_key");
+  const defaultKeyPath = join(configDir, "api_key");
   try {
     const token = readFileSync(defaultKeyPath, "utf8").trim();
     if (token) return token;
@@ -40,15 +53,15 @@ export function getTodoistToken(agentId?: string): string {
 
   // Step 4: nothing worked — throw with full accounting
   const tried: string[] = [];
-  if (agentId) {
-    const agentKeyPath = join(homedir(), ".config", "todoist", `api_key_${agentId}`);
+  if (normalizedAgentId) {
+    const agentKeyPath = join(configDir, `api_key_${normalizedAgentId}`);
     tried.push(`  - ${agentKeyPath}: not readable or empty`);
   }
   tried.push(`  - process.env.TODOIST_API_TOKEN: not set or empty`);
-  tried.push(`  - ${join(homedir(), ".config", "todoist", "api_key")}: not readable or empty`);
+  tried.push(`  - ${join(configDir, "api_key")}: not readable or empty`);
 
   throw new Error(
-    `Could not resolve Todoist token for agent${agentId ? ` "${agentId}"` : ""}.\n` +
+    `Could not resolve Todoist token for agent${normalizedAgentId ? ` "${normalizedAgentId}"` : ""}.\n` +
       `Tried:\n${tried.join("\n")}`
   );
 }

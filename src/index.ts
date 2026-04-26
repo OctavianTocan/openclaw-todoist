@@ -52,7 +52,7 @@ export default definePluginEntry({
     clients.clear();
 
     // --- todoist_list_tasks ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_list_tasks",
       label: "Todoist List Tasks",
       description:
@@ -83,8 +83,8 @@ export default definePluginEntry({
           })
         ),
       }),
-      async execute(id, params) {
-        const client = getClient(id);
+      async execute(_id, params) {
+        const client = getClient(ctx.agentId);
         // Use filter endpoint when a natural-language filter is provided.
         if (params.filter) {
           const result = await client.getTasksByFilter({ query: params.filter });
@@ -104,20 +104,20 @@ export default definePluginEntry({
     }));
 
     // --- todoist_get_task ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_get_task",
       label: "Todoist Get Task",
       description: "Retrieve a single active task by its id.",
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(id, params) {
-        return jsonResult(await getClient(id).getTask(params.id));
+      async execute(_id, params) {
+        return jsonResult(await getClient(ctx.agentId).getTask(params.id));
       },
     }));
 
     // --- todoist_create_task ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_create_task",
       label: "Todoist Create Task",
       description:
@@ -150,8 +150,8 @@ export default definePluginEntry({
         ),
         assignee_id: Type.Optional(Type.String()),
       }),
-      async execute(id, params) {
-        const task = await getClient(id).addTask(
+      async execute(_id, params) {
+        const task = await getClient(ctx.agentId).addTask(
           compact({
             content: params.content,
             description: params.description,
@@ -172,7 +172,7 @@ export default definePluginEntry({
     }));
 
     // --- todoist_quick_add ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_quick_add",
       label: "Todoist Quick Add",
       description:
@@ -183,14 +183,14 @@ export default definePluginEntry({
             "Full natural-language task string, e.g. 'Pay rent tomorrow 9am #Finance @recurring p1'.",
         }),
       }),
-      async execute(id, params) {
-        const task = await getClient(id).quickAddTask({ text: params.text });
+      async execute(_id, params) {
+        const task = await getClient(ctx.agentId).quickAddTask({ text: params.text });
         return jsonResult(task);
       },
     }));
 
     // --- todoist_update_task ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_update_task",
       label: "Todoist Update Task",
       description: "Patch an existing task. Only fields you pass are updated.",
@@ -206,8 +206,8 @@ export default definePluginEntry({
         due_lang: Type.Optional(Type.String()),
         assignee_id: Type.Optional(Type.String()),
       }),
-      async execute(id, params) {
-        const task = await getClient(id).updateTask(
+      async execute(_id, params) {
+        const task = await getClient(ctx.agentId).updateTask(
           params.id,
           compact({
             content: params.content,
@@ -226,36 +226,36 @@ export default definePluginEntry({
     }));
 
     // --- todoist_complete_task ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_complete_task",
       label: "Todoist Complete Task",
       description: "Mark a task as complete (closed).",
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(id, params) {
-        const ok = await getClient(id).closeTask(params.id);
+      async execute(_id, params) {
+        const ok = await getClient(ctx.agentId).closeTask(params.id);
         return jsonResult({ id: params.id, closed: ok });
       },
     }));
 
     // --- todoist_reopen_task ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_reopen_task",
       label: "Todoist Reopen Task",
       description: "Reopen a previously completed task.",
       parameters: Type.Object({
         id: Type.String({ description: "The task id." }),
       }),
-      async execute(id, params) {
-        const ok = await getClient(id).reopenTask(params.id);
+      async execute(_id, params) {
+        const ok = await getClient(ctx.agentId).reopenTask(params.id);
         return jsonResult({ id: params.id, reopened: ok });
       },
     }));
 
     // --- todoist_delete_task ---
     // Destructive: explicit id only. Never add a filter-based bulk delete here.
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_delete_task",
       label: "Todoist Delete Task",
       description:
@@ -263,25 +263,25 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The task id to delete." }),
       }),
-      async execute(id, params) {
-        const ok = await getClient(id).deleteTask(params.id);
+      async execute(_id, params) {
+        const ok = await getClient(ctx.agentId).deleteTask(params.id);
         return jsonResult({ id: params.id, deleted: ok });
       },
     }));
 
     // --- todoist_list_projects ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_list_projects",
       label: "Todoist List Projects",
       description: "List every project in the workspace (Inbox + user projects).",
       parameters: Type.Object({}),
-      async execute(id, _params) {
-        return jsonResult(await getClient(id).getProjects());
+      async execute(_id, _params) {
+        return jsonResult(await getClient(ctx.agentId).getProjects());
       },
     }));
 
     // --- todoist_create_project ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_create_project",
       label: "Todoist Create Project",
       description: "Create a new project.",
@@ -298,8 +298,8 @@ export default definePluginEntry({
           })
         ),
       }),
-      async execute(id, params) {
-        const project = await getClient(id).addProject(
+      async execute(_id, params) {
+        const project = await getClient(ctx.agentId).addProject(
           compact({
             name: params.name,
             parentId: params.parent_id,
@@ -314,7 +314,7 @@ export default definePluginEntry({
 
     // --- todoist_delete_project ---
     // Destructive: explicit id only. Never add a filter-based bulk delete here.
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_delete_project",
       label: "Todoist Delete Project",
       description:
@@ -322,20 +322,20 @@ export default definePluginEntry({
       parameters: Type.Object({
         id: Type.String({ description: "The project id to delete." }),
       }),
-      async execute(id, params) {
-        const ok = await getClient(id).deleteProject(params.id);
+      async execute(_id, params) {
+        const ok = await getClient(ctx.agentId).deleteProject(params.id);
         return jsonResult({ id: params.id, deleted: ok });
       },
     }));
 
     // --- todoist_list_labels ---
-    api.registerTool((_ctx) => ({
+    api.registerTool((ctx) => ({
       name: "todoist_list_labels",
       label: "Todoist List Labels",
       description: "List personal labels in the workspace.",
       parameters: Type.Object({}),
-      async execute(id, _params) {
-        return jsonResult(await getClient(id).getLabels());
+      async execute(_id, _params) {
+        return jsonResult(await getClient(ctx.agentId).getLabels());
       },
     }));
   },
