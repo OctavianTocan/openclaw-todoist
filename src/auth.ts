@@ -11,7 +11,7 @@ import { join } from "node:path";
  * 3. For default/main only: check ~/.config/todoist/api_key if env missing
  * 4. Throw a precise error naming every path tried
  *
- * Do NOT silently fall back from non-main agent-specific paths to the main/default token.
+ * Do NOT silently fall back from explicit non-main agents to the default token.
  */
 export function getTodoistToken(agentId?: string): string {
   const configDir = process.env.TODOIST_CONFIG_DIR ?? join(homedir(), ".config", "todoist");
