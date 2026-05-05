@@ -101,7 +101,7 @@ export default definePluginEntry({
         );
         return jsonResult(result);
       },
-    }));
+    }), { name: "todoist_list_tasks" });
 
     // --- todoist_get_task ---
     api.registerTool((ctx) => ({
@@ -114,7 +114,7 @@ export default definePluginEntry({
       async execute(_id, params) {
         return jsonResult(await getClient(ctx.agentId).getTask(params.id));
       },
-    }));
+    }), { name: "todoist_get_task" });
 
     // --- todoist_create_task ---
     api.registerTool((ctx) => ({
@@ -169,7 +169,7 @@ export default definePluginEntry({
         );
         return jsonResult(task);
       },
-    }));
+    }), { name: "todoist_create_task" });
 
     // --- todoist_quick_add ---
     api.registerTool((ctx) => ({
@@ -187,7 +187,7 @@ export default definePluginEntry({
         const task = await getClient(ctx.agentId).quickAddTask({ text: params.text });
         return jsonResult(task);
       },
-    }));
+    }), { name: "todoist_quick_add" });
 
     // --- todoist_update_task ---
     api.registerTool((ctx) => ({
@@ -223,7 +223,7 @@ export default definePluginEntry({
         );
         return jsonResult(task);
       },
-    }));
+    }), { name: "todoist_update_task" });
 
     // --- todoist_complete_task ---
     api.registerTool((ctx) => ({
@@ -237,7 +237,7 @@ export default definePluginEntry({
         const ok = await getClient(ctx.agentId).closeTask(params.id);
         return jsonResult({ id: params.id, closed: ok });
       },
-    }));
+    }), { name: "todoist_complete_task" });
 
     // --- todoist_reopen_task ---
     api.registerTool((ctx) => ({
@@ -251,7 +251,7 @@ export default definePluginEntry({
         const ok = await getClient(ctx.agentId).reopenTask(params.id);
         return jsonResult({ id: params.id, reopened: ok });
       },
-    }));
+    }), { name: "todoist_reopen_task" });
 
     // --- todoist_delete_task ---
     // Destructive: explicit id only. Never add a filter-based bulk delete here.
@@ -267,7 +267,7 @@ export default definePluginEntry({
         const ok = await getClient(ctx.agentId).deleteTask(params.id);
         return jsonResult({ id: params.id, deleted: ok });
       },
-    }));
+    }), { name: "todoist_delete_task" });
 
     // --- todoist_list_projects ---
     api.registerTool((ctx) => ({
@@ -278,7 +278,7 @@ export default definePluginEntry({
       async execute(_id, _params) {
         return jsonResult(await getClient(ctx.agentId).getProjects());
       },
-    }));
+    }), { name: "todoist_list_projects" });
 
     // --- todoist_create_project ---
     api.registerTool((ctx) => ({
@@ -310,7 +310,7 @@ export default definePluginEntry({
         );
         return jsonResult(project);
       },
-    }));
+    }), { name: "todoist_create_project" });
 
     // --- todoist_delete_project ---
     // Destructive: explicit id only. Never add a filter-based bulk delete here.
@@ -326,7 +326,7 @@ export default definePluginEntry({
         const ok = await getClient(ctx.agentId).deleteProject(params.id);
         return jsonResult({ id: params.id, deleted: ok });
       },
-    }));
+    }), { name: "todoist_delete_project" });
 
     // --- todoist_list_labels ---
     api.registerTool((ctx) => ({
@@ -337,7 +337,7 @@ export default definePluginEntry({
       async execute(_id, _params) {
         return jsonResult(await getClient(ctx.agentId).getLabels());
       },
-    }));
+    }), { name: "todoist_list_labels" });
   },
 });
 

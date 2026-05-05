@@ -2,6 +2,25 @@
   "id": "todoist",
   "name": "Todoist",
   "description": "Native Todoist integration for OpenClaw — task, project, and label management via the official Todoist API.",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "todoist_list_tasks",
+      "todoist_get_task",
+      "todoist_create_task",
+      "todoist_quick_add",
+      "todoist_update_task",
+      "todoist_complete_task",
+      "todoist_reopen_task",
+      "todoist_delete_task",
+      "todoist_list_projects",
+      "todoist_create_project",
+      "todoist_delete_project",
+      "todoist_list_labels"
+    ]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false
